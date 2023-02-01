@@ -9,7 +9,7 @@ const details = () => ({
                   Settings are dependant on file bitrate
                   Working by the logic that H265 can support the same ammount of data at half the bitrate of H264.
                   NVDEC & NVENC compatable GPU required.
-                  This plugin will skip any files that are in the VP9 codec.`,
+                  This plugin will skip any files that are in the VP9 or AV1 codecs.`,
   Version: '3.1',
   Tags: 'pre-processing,ffmpeg,video only,nvenc h265,configurable',
   Inputs: [{
@@ -261,30 +261,32 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
       if (file.ffProbeData.streams[i].codec_name === 'mjpeg' || file.ffProbeData.streams[i].codec_name === 'png') {
         extraArguments += `-map -v:${videoIdx} `;
       }
-      // Check if codec of stream is hevc or vp9 AND check if file.container matches inputs.container.
+      // Check if codec of stream is hevc, vp9 or AV1 AND check if file.container matches inputs.container.
       // If so nothing for plugin to do.
       if (
         (
           file.ffProbeData.streams[i].codec_name === 'hevc'
           || file.ffProbeData.streams[i].codec_name === 'vp9'
+          || file.ffProbeData.streams[i].codec_name === 'AV1'
         )
                 && file.container === inputs.container
       ) {
         response.processFile = false;
-        response.infoLog += `File is already hevc or vp9 & in ${inputs.container}. \n`;
+        response.infoLog += `File is already hevc, vp9 or AV1 & in ${inputs.container}. \n`;
         return response;
       }
-      // Check if codec of stream is hevc or vp9
+      // Check if codec of stream is hevc, vp9 or AV1
       // AND check if file.container does NOT match inputs.container.
       // If so remux file.
       if (
         (
           file.ffProbeData.streams[i].codec_name === 'hevc'
            || file.ffProbeData.streams[i].codec_name === 'vp9'
+           || file.ffProbeData.streams[i].codec_name === 'AV1'
         )
                 && file.container !== inputs.container
       ) {
-        response.infoLog += `File is hevc or vp9 but is not in ${inputs.container} container. Remuxing. \n`;
+        response.infoLog += `File is hevc, vp9 or AV1 but is not in ${inputs.container} container. Remuxing. \n`;
         response.preset = `, -map 0 -c copy ${extraArguments}`;
         response.processFile = true;
         return response;
@@ -338,7 +340,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
   response.preset += `${genpts}, -map 0 -c:v hevc_nvenc -cq:v 19 ${bitrateSettings} `
   + `-spatial_aq:v 1 -rc-lookahead:v 32 -c:a copy -c:s copy -max_muxing_queue_size 9999 ${extraArguments}`;
   response.processFile = true;
-  response.infoLog += 'File is not hevc or vp9. Transcoding. \n';
+  response.infoLog += 'File is not hevc, vp9 or AV1. Transcoding. \n';
   return response;
 };
 module.exports.details = details;
